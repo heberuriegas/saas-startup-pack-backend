@@ -1,0 +1,10 @@
+require: rubocop-rails
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*"
+
+AllCops:
+  NewCops: enable
+  Exclude:
+    - "db/**/*"

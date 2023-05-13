@@ -1,0 +1,11 @@
+es:
+  back:
+    notifications:
+      send_sms_otp: "Tu código de verificación es: %{code}"
+      send_sms_otp_with_hash: |-
+        Tu código de verificación es: %{code}
+
+
+
+        %{validation_hash}
+      send_whatsapp_otp: "Tu código de verificación es: %{code}"
