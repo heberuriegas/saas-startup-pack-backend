@@ -1,0 +1,96 @@
+version: "3.9"
+services:
+  ssp-postgres:
+    image: postgres:12
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_PASSWORD: postgresspassword
+      POSTGRES_DB: ssp_production
+    volumes:
+      - "postgres:/var/lib/postgresql/data"
+    networks:
+      - nginx_default
+  ssp-graphql-engine:
+    image: hasura/graphql-engine:v2.0.10
+    depends_on:
+      - "postgres"
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgresspassword@ssp-postgres:5432/ssp_production
+      ## enable the console served by server
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
+      ## enable debugging mode. It is recommended to disable this in production
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+      HASURA_GRAPHQL_ADMIN_SECRET: hasuraadminsecret
+      HASURA_GRAPHQL_AUTH_HOOK: https://backend.ssp.com/api/auth/hasura
+      ACTION_BASE_URL: https://backend.ssp.com/api/hasura/actions
+      EVENT_BASE_URL: https://backend.ssp.com/api/hasura/events
+      BACKEND_REMOTE_SCHEMA: https://backend.ssp.com/graphql
+      HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
+      HASURA_SERVICE_KEY: hasuraservicekey
+      HASURA_GRAPHQL_EXPERIMENTAL_FEATURES: "inherited_roles"
+    networks:
+      - nginx_default
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "udp://logs4.papertrailapp.com:31083"
+        tag: "{{.Name}}/{{.ID}}"
+  ssp-redis:
+    image: redis:6.0-alpine
+    volumes:
+      - "redis:/data"
+    networks:
+      - nginx_default
+  ssp-backend:
+    image: "${DOCKER_SWARM_PRODUCTION}:5000/ssp"
+    depends_on:
+      - "postgres"
+      - "graphql-engine"
+      - "redis"
+    command: bash -c "rm -rf tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p 3000"
+    environment:
+      REDIS_URL: redis://ssp-redis:6379/0
+      DATABASE_URL: postgres://postgres:postgresspassword@ssp-postgres:5432
+      DISABLE_SPRING: 1
+      HASURA_ENDPOINT: http://ssp-graphql-engine:8080/v1/graphql
+      HASURA_SERVICE_KEY: hasuraservicekey
+      HASURA_GRAPHQL_ADMIN_SECRET: hasuraadminsecret
+    networks:
+      - nginx_default
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "udp://logs4.papertrailapp.com:31083"
+        tag: "{{.Name}}/{{.ID}}"
+  ssp-worker:
+    image: "${DOCKER_SWARM_PRODUCTION}:5000/ssp"
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "backend"
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    expose: []
+    entrypoint: ""
+    environment:
+      REDIS_URL: redis://ssp-redis:6379/0
+      DATABASE_URL: postgres://postgres:postgresspassword@ssp-postgres:5432
+      DISABLE_SPRING: 1
+      HASURA_ENDPOINT: http://ssp-graphql-engine:8080/v1/graphql
+      HASURA_SERVICE_KEY: hasuraservicekey
+      HASURA_GRAPHQL_ADMIN_SECRET: hasuraadminsecret
+    networks:
+      - nginx_default
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "udp://logs4.papertrailapp.com:31083"
+        tag: "{{.Name}}/{{.ID}}"
+
+volumes:
+  redis:
+  postgres:
+
+networks:
+  nginx_default:
+    external: true

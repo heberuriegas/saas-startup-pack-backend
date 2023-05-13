@@ -1,0 +1,49 @@
+table:
+  name: users
+  schema: public
+computed_fields:
+  - name: current_password_required
+    definition:
+      function:
+        name: user_current_password_required
+        schema: public
+remote_relationships:
+  - definition:
+      hasura_fields:
+        - id
+      remote_field:
+        attachment:
+          arguments:
+            input:
+              attribute: avatar
+              record_id: $id
+              record_type: User
+      remote_schema: Backend
+    name: avatar
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - created_at
+        - email
+        - id
+        - name
+        - phone_number
+        - updated_at
+        - username
+      filter:
+        _or:
+          - id:
+              _eq: X-Hasura-User-Id
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - email
+        - name
+        - phone_number
+        - username
+      filter:
+        id:
+          _eq: X-Hasura-User-Id
+      check: null

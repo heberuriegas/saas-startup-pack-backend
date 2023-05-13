@@ -1,0 +1,143 @@
+version: "3.7"
+name: ssp
+services:
+  postgres:
+    image: postgres:12
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: ssp_development
+    volumes:
+      - "postgres:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  graphql-engine:
+    image: hasura/graphql-engine:v2.22.1
+    ports:
+      - "8085:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/ssp_development
+      ## enable the console served by server
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
+      ## enable debugging mode. It is recommended to disable this in production
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+      HASURA_GRAPHQL_AUTH_HOOK: http://backend:3000/api/auth/hasura
+      HASURA_GRAPHQL_ADMIN_SECRET: hasura
+      ACTION_BASE_URL: http://backend:3000/api/hasura/actions
+      EVENT_BASE_URL: http://backend:3000/api/hasura/events
+      BACKEND_REMOTE_SCHEMA: http://backend:3000/graphql
+      HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
+      HASURA_SERVICE_KEY: hasura_service_key
+      AFTER_INSERT_ACTIVITY_HOOK: http://backend-v1:8081/hooks/after_insert_activity
+      BACKEND_AUTHORIZATION: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbiI6ImFza2puczkyaGIzYnMwIiwiaWF0IjoxNjU2MzcxMTgwfQ.mChgu3SoVp2UjQ_UNBPrO5qQxSLFUhSjrmALw161qe4
+      BACKEND_GRAPHQL: http://backend-v1:8081/graphql
+      BACKEND_URL: http://backend-v1:8081
+      HASURA_GRAPHQL_EXPERIMENTAL_FEATURES: "inherited_roles"
+  redis:
+    image: redis:6.0-alpine
+    volumes:
+      - "redis:/data"
+  backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      graphql-engine:
+        condition: service_started
+      redis:
+        condition: service_started
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    command: bash -c "rm -rf tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p 3000"
+    ports:
+      - "3001:3000"
+    volumes:
+      - "bundle_cache:/bundle"
+      - ".:/app"
+      - ".env:/app/.env"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432
+      DISABLE_SPRING: 1
+      HASURA_ENDPOINT: http://graphql-engine:8080/v1/graphql
+      HASURA_SERVICE_KEY: hasura_service_key
+      HASURA_GRAPHQL_ADMIN_SECRET: hasura
+    stdin_open: true
+    tty: true
+  worker:
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "backend"
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    volumes:
+      - "bundle_cache:/bundle"
+      - ".:/app"
+      - ".env:/app/.env"
+    entrypoint: ""
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432
+      DISABLE_SPRING: 1
+      HASURA_ENDPOINT: http://graphql-engine:8080/v1/graphql
+      HASURA_SERVICE_KEY: hasura_service_key
+      HASURA_GRAPHQL_ADMIN_SECRET: hasura
+    stdin_open: true
+    tty: true
+  spring:
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "graphql-engine"
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    volumes:
+      - "bundle_cache:/bundle"
+      - ".:/app"
+      - .env:/app/.env
+    entrypoint: ""
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432
+      WEBPACKER_DEV_SERVER_HOST: webpacker
+    command: bash -c "umask a+rw; bundle exec spring server"
+
+    # This ensures that the pid namespace is shared between the host
+    # and the container. It's not necessary to be able to run spring
+    # commands, but it is necessary for "spring status" and "spring stop"
+    # to work properly.
+    pid: host
+  webpacker:
+    depends_on:
+      - "postgres"
+      - "redis"
+      - "backend"
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    entrypoint: ""
+    environment:
+      - NODE_ENV=development
+      - RAILS_ENV=development
+      - WEBPACKER_DEV_SERVER_HOST=0.0.0.0
+    command: ./bin/webpack-dev-server
+    volumes:
+      - "bundle_cache:/bundle"
+      - ".:/app"
+
+volumes:
+  redis:
+  postgres:
+  bundle_cache:

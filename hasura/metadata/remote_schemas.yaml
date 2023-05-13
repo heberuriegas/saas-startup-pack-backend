@@ -1,0 +1,97 @@
+- name: Backend
+  definition:
+    url_from_env: BACKEND_REMOTE_SCHEMA
+    timeout_seconds: 60
+    customization: {}
+    headers:
+      - name: X-Hasura-Service-Key
+        value_from_env: HASURA_SERVICE_KEY
+    forward_client_headers: true
+  permissions:
+    - role: user
+      definition:
+        schema: |
+          schema {
+            query: Query
+            mutation: Mutation
+          }
+          scalar ISO8601DateTime
+          scalar bigint
+          type AasmField {
+            aasm_field: String!
+            human_aasm_field: String!
+            id: Int!
+            possible_events: [AasmPossibleEvents!]!
+          }
+          type AasmPossibleEvents {
+            label: String!
+            name: String!
+            type: String!
+          }
+          type Attachment {
+            blob: Blob!
+            created_at: ISO8601DateTime!
+            id: String!
+            medium_url: String
+            small_url: String
+            thumbnail_url: String
+            url: String!
+          }
+          type Blob {
+            byte_size: bigint!
+            checksum: String!
+            content_type: String!
+            created_at: ISO8601DateTime!
+            filename: String!
+            id: String!
+            key: String!
+          }
+          type CreateAttachmentOutput {
+            attachment: Attachment!
+          }
+          type CreateAttachmentsOutput {
+            attachments: [Attachment!]!
+          }
+          type DestroyAttachmentPayload {
+            clientMutationId: String
+          }
+          type Mutation {
+            create_attachment(input: CreateAttachmentInput!): CreateAttachmentOutput
+            create_attachments(input: CreateAttachmentsInput!): CreateAttachmentsOutput
+            destroy_attachment(input: DestroyAttachmentInput!): DestroyAttachmentPayload
+          }
+          type Query {
+            aasm_field(input: AasmFieldsAttributes!): AasmField
+            attachment(input: AttachmentsAttributes!): Attachment
+            attachments(input: AttachmentsAttributes!): [Attachment!]!
+          }
+          input AasmFieldsAttributes {
+            attribute: String!
+            record_id: bigint!
+            record_type: String!
+          }
+          input AttachmentsAttributes {
+            attribute: String!
+            record_id: bigint!
+            record_type: String!
+          }
+          input CreateAttachmentInput {
+            attribute: String!
+            clientMutationId: String
+            related_id: Int!
+            related_type: String!
+            signed_id: String!
+          }
+          input CreateAttachmentsInput {
+            attribute: String!
+            clientMutationId: String
+            related_id: Int!
+            related_type: String!
+            signed_ids: [String!]!
+          }
+          input DestroyAttachmentInput {
+            attribute: String!
+            clientMutationId: String
+            related_id: Int!
+            related_type: String!
+          }

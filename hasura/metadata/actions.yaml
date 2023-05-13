@@ -1,0 +1,48 @@
+actions:
+  - name: create_direct_upload
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_BASE_URL}}"
+      forward_client_headers: true
+      headers:
+        - name: X-Hasura-Service-Key
+          value_from_env: HASURA_SERVICE_KEY
+    permissions:
+      - role: user
+  - name: custom_update_users_by_pk
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_BASE_URL}}"
+      headers:
+        - name: X-Hasura-Service-Key
+          value_from_env: HASURA_SERVICE_KEY
+    permissions:
+      - role: user
+  - name: me
+    definition:
+      kind: ""
+      handler: "{{ACTION_BASE_URL}}"
+      forward_client_headers: true
+      headers:
+        - name: X-Hasura-Service-Key
+          value_from_env: HASURA_SERVICE_KEY
+    permissions:
+      - role: user
+custom_types:
+  enums: []
+  input_objects:
+    - name: SendOtpInput
+    - name: CreateDirectUploadInput
+    - name: UpdateUserUsersSetInput
+    - name: UpdateUserUsersPkColumnsInput
+  objects:
+    - name: SendOtpOutput
+    - name: CreateDirectUploadOutput
+    - name: SampleOutput
+    - name: UpdateUserOutput
+    - name: UploadFileBlob
+    - name: UploadFile
+    - name: User
+    - name: PossibleEvent
+    - name: AasmField
+  scalars: []

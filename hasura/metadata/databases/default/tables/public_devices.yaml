@@ -1,0 +1,71 @@
+table:
+  name: devices
+  schema: public
+insert_permissions:
+  - role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - brand
+        - created_at
+        - deleted_at
+        - device_model_id
+        - device_model_name
+        - device_name
+        - device_year_class
+        - exponent_push_token
+        - manufacturer
+        - os_name
+        - os_version
+        - platform_api_level
+        - total_memory
+        - updated_at
+        - user_id
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - brand
+        - created_at
+        - deleted_at
+        - device_name
+        - device_year_class
+        - exponent_push_token
+        - id
+        - manufacturer
+        - device_model_id
+        - device_model_name
+        - os_name
+        - os_version
+        - platform_api_level
+        - total_memory
+        - updated_at
+        - user_id
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - brand
+        - created_at
+        - deleted_at
+        - device_name
+        - device_year_class
+        - exponent_push_token
+        - manufacturer
+        - device_model_id
+        - device_model_name
+        - os_name
+        - os_version
+        - platform_api_level
+        - total_memory
+        - updated_at
+        - user_id
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      check: null
